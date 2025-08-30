@@ -1,0 +1,202 @@
+    <!DOCTYPE html><html lang="my">
+    <head>
+      <meta charset="utf-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1" />
+      <title>Veo 3 Video Generator</title>
+      <style>
+        :root { --bg:#0b1020; --card:#121933; --ink:#e6ecff; --muted:#9fb0ff40; }
+        *{box-sizing:border-box}
+        body{margin:0; font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu; background:linear-gradient(180deg,#0b1020,#0b1020 40%,#0e1630); color:var(--ink)}
+        header{padding:24px 16px; text-align:center; border-bottom:1px solid #1f2a55}
+        h1{margin:0 0 6px; font-size:22px}
+        main{max-width:960px; margin:24px auto; padding:0 16px 40px}
+        .grid{display:grid; grid-template-columns:1.1fr .9fr; gap:16px}
+        @media (max-width:900px){.grid{grid-template-columns:1fr}}
+        .card{background:var(--card); border:1px solid #1b2550; border-radius:16px; padding:16px; box-shadow:0 10px 30px #0005}
+        label{display:block; font-size:13px; opacity:.9; margin-bottom:6px}
+        input[type="text"],input[type="password"],select,textarea{width:100%; background:#0f1738; color:var(--ink); border:1px solid #2a3977; border-radius:10px; padding:10px 12px; font-size:14px}
+        textarea{min-height:120px; resize:vertical}
+        .row{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+        .btn{display:inline-flex; align-items:center; gap:8px; background:#5b7cff; border:0; padding:10px 14px; color:white; border-radius:12px; font-weight:600; cursor:pointer}
+        .btn:disabled{opacity:.5; cursor:not-allowed}
+        .muted{font-size:12px; color:#cdd7ffb3}
+        .log{height:160px; overflow:auto; background:#0e1430; border:1px dashed #355; border-radius:12px; padding:10px; font-family:ui-monospace,Consolas,monospace; white-space:pre-wrap}
+        video{width:100%; border-radius:16px; border:1px solid #203067; background:#000}
+        .k{display:flex; align-items:center; gap:8px; margin:6px 0 10px}
+        .pill{display:inline-flex; align-items:center; gap:6px; font-size:12px; padding:4px 8px; border:1px solid #2a3977; border-radius:999px; background:#0b1230}
+        .danger{color:#ffbdbd}
+      </style>
+    </head>
+    <body>
+      <header>
+        <h1>Veo 3 Video Generator</h1>
+        <div class="muted">Vercel ကိုအသုံးပြုပြီး API key ကို browser ထဲမှာ ထည့်သွင်းပါ။</div>
+      </header>
+      <main class="grid">
+        <section class="card">
+          <div class="k">
+            <span class="pill">Model
+              <select id="model">
+                <option value="veo-3.0-generate-preview">veo-3.0-generate-preview</option>
+                <option value="veo-3.0-fast-generate-preview">veo-3.0-fast-generate-preview</option>
+                <option value="veo-2.0-generate">veo-2.0-generate (silent)</option>
+              </select>
+            </span>
+            <span class="pill">Aspect
+              <select id="aspect">
+                <option value="16:9">16:9 (landscape)</option>
+                <option value="9:16">9:16 (portrait)</option>
+              </select>
+            </span>
+            <span class="pill">Persons
+              <select id="persons">
+                <option value="allow_all">allow_all</option>
+                <option value="allow_adult">allow_adult</option>
+                <option value="dont_allow">dont_allow</option>
+              </select>
+            </span>
+          </div>
+          <label for="prompt">Prompt</label>
+          <textarea id="prompt" placeholder="ဥပမာ: A cinematic dolly shot across a rainy neon Tokyo alley at night; footsteps; distant traffic; subtle synth ambience."></textarea>
+          
+          <label for="neg">Negative prompt (optional)</label>
+          <input id="neg" type="text" placeholder="ဥပမာ: blurry, low quality, cartoon" />
+          
+          <div class="row">
+            <div>
+              <label for="key">Gemini API key</label>
+              <input id="key" type="password" placeholder="AI Studio or Vertex AI မှ key ကို ထည့်သွင်းပါ" />
+            </div>
+            <div>
+              <label>&nbsp;</label>
+              <button id="go" class="btn">▶ Generate 8s video</button>
+            </div>
+          </div>
+          
+          <div class="muted" style="margin-top:8px">Veo 3 သည် 8 စက္ကန့်စာ 720p ဗီဒီယိုကို အသံနှင့်အတူ ဖန်တီးပေးသည်။ Veo 2 သည် အသံမပါဝင်ပါ။</div>
+          
+          <h3>လုပ်ဆောင်ချက်မှတ်တမ်း</h3>
+          <div id="log" class="log" aria-live="polite"></div>
+        </section>
+        
+        <section class="card">
+          <h3>ရလဒ်</h3>
+          <video id="player" controls playsinline></video>
+          <div style="margin-top:10px; display:flex; gap:10px; align-items:center">
+            <a id="download" class="btn" href="#" download="veo-output.mp4" style="display:none">⬇ MP4 ကို download လုပ်ရန်</a>
+            <span id="meta" class="muted"></span>
+          </div>
+          <details style="margin-top:12px">
+            <summary>ဒါဘယ်လိုအလုပ်လုပ်လဲ?</summary>
+            <p class="muted">ဒီ app က Vercel မှာ deploy လုပ်ထားတဲ့ Serverless Functions ကိုသုံးပြီး ဗီဒီယိုဖန်တီးတဲ့ request တွေကို ကိုင်တွယ်ပါတယ်။ သင့် browser ကနေ Vercel function ကို request ပို့ပြီး၊ function ကမှ Gemini API ကို support လုပ်တဲ့ နေရာကနေ ပြန်ခေါ်ပေးတာ ဖြစ်ပါတယ်။ ဒါက တည်နေရာ ကန့်သတ်ချက်တွေကို ကျော်လွှားနိုင်ပါတယ်။</p>
+          </details>
+        </section>
+      </main>
+      <script>
+        // ဒီနေရာမှာ Vercel ကပေးတဲ့ URL နဲ့ အစားထိုးပါ။
+        const VERCEL_BASE_URL = 'https://veo-vercel-proxy.vercel.app';
+        const START_FUNCTION_URL = VERCEL_BASE_URL + '/api/generate';
+        const POLL_FUNCTION_URL = VERCEL_BASE_URL + '/api/poll';
+
+        const els = (id) => document.getElementById(id);
+        const log = (m) => { const l = els('log'); l.textContent += (m + "\n"); l.scrollTop = l.scrollHeight; };
+        
+        els('go').addEventListener('click', async () => {
+          const apiKey = els('key').value.trim();
+          const prompt = els('prompt').value.trim();
+          const negativePrompt = els('neg').value.trim();
+          const aspectRatio = els('aspect').value;
+          const personGeneration = els('persons').value;
+          const model = els('model').value;
+
+          if (!apiKey) {
+            alert('ကျေးဇူးပြု၍ သင်၏ Gemini API key ကို ထည့်သွင်းပါ။');
+            return;
+          }
+          if (!prompt) {
+            alert('ကျေးဇူးပြု၍ prompt တစ်ခုကို ထည့်သွင်းပါ။');
+            return;
+          }
+          
+          els('go').disabled = true; els('download').style.display = 'none'; els('player').removeAttribute('src'); els('player').load();
+          els('meta').textContent = '';
+          log('Proxy server သို့ job ကို ပို့နေသည်...');
+
+          try {
+            const startResp = await fetch(START_FUNCTION_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                apiKey,
+                prompt,
+                negativePrompt,
+                aspectRatio,
+                personGeneration,
+                model
+              })
+            });
+
+            if (!startResp.ok) {
+              throw new Error(`Start failed: ${startResp.statusText}`);
+            }
+            
+            const { operationName } = await startResp.json();
+            log('Job စတင်ပြီ။ Operation: ' + operationName);
+
+            let done = false;
+            let status;
+            const startedAt = Date.now();
+            while (!done) {
+              await new Promise(r => setTimeout(r, 5000));
+              const pollResp = await fetch(POLL_FUNCTION_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ operationName, apiKey })
+              });
+              
+              if (!pollResp.ok) {
+                throw new Error(`Poll failed: ${pollResp.statusText}`);
+              }
+              
+              status = await pollResp.json();
+              done = !!status.done;
+              if (status.error) {
+                throw new Error(`API error ${status.error.code}: ${status.error.message}`);
+              }
+              const waited = Math.round((Date.now() - startedAt) / 1000);
+              log(`⏳ စောင့်ဆိုင်းနေသည်... ${waited}s`);
+            }
+            log('✅ ပြီးဆုံးပါပြီ။ Downloading လုပ်နေသည်...');
+
+            const uri = status.response?.generateVideoResponse?.generatedSamples?.[0]?.video?.uri ||
+                        status.response?.generatedVideos?.[0]?.video?.uri;
+            if (!uri) {
+              console.warn(status);
+              throw new Error('Could not find video URI in response.');
+            }
+
+            const vidResp = await fetch(uri);
+            if (!vidResp.ok) {
+              throw new Error(`Download failed: ${vidResp.status} ${vidResp.statusText}`);
+            }
+
+            const blob = await vidResp.blob();
+            const url = URL.createObjectURL(blob);
+
+            const player = els('player');
+            player.src = url; player.load(); player.play().catch(() => {});
+            const dl = els('download');
+            dl.href = url; dl.style.display = 'inline-flex';
+            els('meta').textContent = `${(blob.size / 1024 / 1024).toFixed(2)} MB · ${(blob.type || 'video/mp4')}`;
+            log('🎉 အဆင်သင့်ဖြစ်ပါပြီ။ Download ခလုတ်ကို အသုံးပြု၍ MP4 ကို သိမ်းဆည်းနိုင်ပါသည်။');
+          } catch (err) {
+            console.error(err);
+            log('❌ ' + (err?.message || err));
+          } finally {
+            els('go').disabled = false;
+          }
+        });
+      </script>
+    </body>
+    </html>   
+
